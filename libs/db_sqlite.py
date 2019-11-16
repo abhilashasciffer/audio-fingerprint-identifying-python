@@ -1,8 +1,8 @@
-from db import Database
-from config import get_config
+from .db import Database
+import configparser
 import sqlite3
 import sys
-from itertools import izip_longest
+from itertools import zip_longest
 from termcolor import colored
 
 class SqliteDatabase(Database):
@@ -10,10 +10,17 @@ class SqliteDatabase(Database):
   TABLE_FINGERPRINTS = 'fingerprints'
 
   def __init__(self):
-    self.connect()
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    self.conn = sqlite3.connect(config.get('DEFAULT', 'db.file'))
+    self.conn.text_factory = str
+
+    self.cur = self.conn.cursor()
+
+    print(colored('sqlite - connection opened','white',attrs=['dark']))
 
   def connect(self):
-    config = get_config()
+    config = configparser.ConfigParser()
 
     self.conn = sqlite3.connect(config['db.file'])
     self.conn.text_factory = str
@@ -67,7 +74,7 @@ class SqliteDatabase(Database):
   def insert(self, table, params):
     keys = ', '.join(params.keys())
     values = params.values()
-
+    values = [(v) for k, v in params.items()] 
     query = "INSERT INTO songs (%s) VALUES (?, ?)" % (keys);
 
     self.cur.execute(query, values)
@@ -79,7 +86,7 @@ class SqliteDatabase(Database):
     def grouper(iterable, n, fillvalue=None):
       args = [iter(iterable)] * n
       return (filter(None, values) for values
-          in izip_longest(fillvalue=fillvalue, *args))
+          in zip_longest(fillvalue=fillvalue, *args))
 
     for split_values in grouper(values, 1000):
       query = "INSERT OR IGNORE INTO %s (%s) VALUES (?, ?, ?)" % (table, ", ".join(columns))
